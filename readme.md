@@ -1,6 +1,6 @@
-# Splunk Network Lab
+# Splunk Network Lab with OPNsense
 
-This project is a small virtual lab for testing and configuring Splunk. It includes two Windows 10 PCs on separate network segments (LAN10: 192.168.10.0/24 and LAN20: 192.168.20.0/24), an OPNsense router/firewall, and a Splunk Enterprise instance running on the host Windows 11 machine. Windows hosts use the Splunk Universal Forwarder to send logs to the indexer. A Kali Linux VM on a NAT network is included to simulate an external attacker and produce adversary-like traffic.
+This project is a small virtual lab for testing and configuring Splunk. It includes one Windows 10 PCs on  network segments (192.168.10.0/24), an OPNsense router/firewall and a Splunk Enterprise instance running on the local Windows 11 machine (My PC). Windows host use the Splunk Universal Forwarder to send logs to the indexer. OPNsense also sends logs to Splunk to indexer
 
 
 ---
@@ -32,7 +32,9 @@ This lab simulates a small enterprise network using VirtualBox VMs:
 
 ---
 
-## VirtualBox | Host | OPNsense Setup
+<br><br>
+
+# VirtualBox | Host | OPNsense Setup
 
 What to do:
 - Create 1x Host-Only Network with IP `192.168.10.1/24`
@@ -60,7 +62,7 @@ Configure the OPNsense VM:
 
 Next, start both VMs to configure network settings inside the guests.
 
-## Setup Host Windows 10
+## Setup Host Windows 10 Static IP
 
 Below is a short video showing how to configure your network adapter. Click the thumbnail to open the video.
 
@@ -85,12 +87,13 @@ Follow the YouTube video showing how to configure OPNsense in VirtualBox. Click 
 - `em1` is Adapter 2 and connects the OPNsense LAN to the Host VM.
 - When configuring `em1`, set the LAN gateway to match the host gateway (example: `192.168.10.254`) and use the same subnet mask.
 
-## After completion
+### After completion
 
 You should be able to ping the Host IP address from the OPNsense terminal and vice versa.
 You should be able to ping the Host IP address from the OPNsense terminal and vice versa.
 
 ---
+<br><br>
 
 # Creating Virtual Network Adapter (Windows 10 | 11)
 
@@ -113,7 +116,7 @@ After creating the adapter, configure it with a static IP. Example values used i
 Video above also shows steps to add static IP to virtual network adapter
 
 
-## Setup firewall rules (Host) — allow Splunk ports
+## Setup firewall rules on virtual adapter — allow Splunk ports
 
 What you need:
 
@@ -148,15 +151,10 @@ New-NetFirewallRule -DisplayName "Allow Syslog UDP 514" -Direction Inbound -Acti
 
 If you want to restrict rules to the new adapter only, create the rule and then edit `InterfaceTypes` or use the `-InterfaceAlias` parameter where applicable.
 
-## After completion — verify connectivity
+### After completion — verify connectivity
 
-From the host, test the adapter locally:
 
-```powershell
-Test-NetConnection -ComputerName 10.20.30.10 -Port 8000
-```
-
-From OPNsense (or another VM), test ping and TCP connectivity (adjust for your environment):
+From OPNsense (or another VM) test ping and TCP connectivity :
 
 CMD (ping):
 
@@ -164,15 +162,11 @@ CMD (ping):
 ping 10.20.30.10
 ```
 
-PowerShell (TCP port test):
-
-```powershell
-Test-NetConnection -ComputerName 10.20.30.10 -Port 9997
-```
 
 If you see successful replies and open ports, the adapter and firewall rules are working.
 
 ---
+<br><br>
 
 # Splunk Setup
 
@@ -190,7 +184,7 @@ mgmtHostPort = <YOUR-IP>:8089
 mgmtHostPort = 10.20.30.10:8089
 ```
 
-3. Open `splunk-launch.conf` in the Splunk install root and add:
+3. Open `splunk-launch.conf` in `etc\`  and add:
 
 ```text
 SPLUNK_BINDIP=<YOUR-IP>
@@ -203,6 +197,7 @@ SPLUNK_BINDIP=10.20.30.10
 
 ## Setup Splunk Universal Forwarder (Host VM)
 
+Go to Windows 10 Host VM.
 Use the virtual adapter IP (example `10.20.30.10`) as the receiving indexer address when configuring the forwarder.
 
 Click the thumbnail to open the forwarder setup video on YouTube:
@@ -210,6 +205,7 @@ Click the thumbnail to open the forwarder setup video on YouTube:
 [![Splunk Universal Forwarder Setup](https://img.youtube.com/vi/Uvxt3MeZN0c/hqdefault.jpg)](https://www.youtube.com/watch?v=Uvxt3MeZN0c)
 
 ---
+<br><br>
 
 # Setup OPNsense syslog
 
@@ -217,7 +213,7 @@ To enable Splunk to receive logs from the OPNsense VM, configure both OPNsense a
 
 ## At OPNsense Web GUI
 
-1. Identify the OPNsense LAN IP (e.g., `192.168.10.254`).
+1. Identify the OPNsense LAN IP (e.g., `192.168.10.254`). You can see the IP in OPNsense terminal. It should appeared after we have setup interface em1 or LAN
 2. From the OPNsense GUI: `System` → `Settings` → `Logging` → `Remote` → `Add`.
 3. In the edit destination settings:
   - Enable the destination.
@@ -225,16 +221,19 @@ To enable Splunk to receive logs from the OPNsense VM, configure both OPNsense a
   - Application / Levels / Facilities: select as needed (or `Select All`).
   - Hostname: set to Splunk Web / receiver IP (example `10.20.30.10`).
   - Port: `514`.
-  - Leave `rtc5424` as default or unticked.
+  - Leave `rtc5424` as default or unticked. (You may enable it if logs not appear in Splunk later)
 4. Save and apply.
 
 ## At Splunk Web
 
 Install the recommended OPNsense Apps from Splunkbase (`OPNsense Add-on for Splunk` and `OPNsense App for Splunk`) then configure the appropriate Data Input to receive the syslog stream.
 
+All steps based on below references.
+
 Reference: https://netwerklabs.com/ship-opnsense-firewall-logs-to-splunk-siem/
 
 ---
+<br><br>
 
 # End Guide
 
